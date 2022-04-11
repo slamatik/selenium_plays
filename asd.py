@@ -10,6 +10,7 @@ df_2min = yf.Ticker('AAPL').history(period='1mo', interval='2m')
 df_5min = yf.Ticker('AAPL').history(period='1mo', interval='5m')
 
 fig_1min = go.Figure(data=[go.Candlestick(x=df_1min.index, open=df_1min.Open, close=df_1min.Close, high=df_1min.High, low=df_1min.Low)])
+fig_1min.update_layout()
 fig_2min = go.Figure(data=[go.Candlestick(x=df_2min.index, open=df_2min.Open, close=df_2min.Close, high=df_2min.High, low=df_2min.Low)])
 
 figures = {'1 minute': fig_1min,
