@@ -1,4 +1,4 @@
-from dash import Dash, html, dcc, Input, Output, State
+from dash import Dash, html, dcc, Input, Output, State, callback_context, dash_table
 import dash_bootstrap_components as dbc
 import plotly.graph_objects as go
 import pandas as pd
@@ -7,30 +7,17 @@ from plotly.subplots import make_subplots
 import datetime as dt
 import yfinance as yf
 
-# PRICE TARGET GRAPH
-ticker = yf.Ticker('PLTR')
-df = ticker.history(period='1y', interval='1d')
-pt_date = dt.datetime.today() + dt.timedelta(25)
-info = ticker.info
+app = Dash(__name__)
 
-target_high = info['targetHighPrice']
-target_mean = info['targetMeanPrice']
-target_meadian = info['targetMedianPrice']
-target_low = info['targetLowPrice']
+ticker_database = {}
 
-pt_dates = [df.index[-1]] + [pt_date]
-pt_high = [df.Close[-1]] + [target_high]
-pt_mean = [df.Close[-1]] + [target_mean]
-pt_low = [df.Close[-1]] + [target_low]
+holders = pd.read_csv('hold.csv')
 
-year_high = [df.Close.max()] * 2
-year_high_dates = [df.index[0]] + [df.Close.idxmax()]
-
-year_low = [df.Close.min()] * 2
-year_low_dates = [df.index[0]] + [df.Close.idxmin()]
+candles_config = {
+    'modeBarButtonsToAdd': ["drawline", "drawopenpath", "drawclosedpath", "drawcircle", "drawrect", "eraseshape"]}
 
 
-def candlestick_graph():
+def candlestick_graph(df):
     fig = go.Figure(data=go.Candlestick(x=df.index, close=df.Close, open=df.Open, high=df.High, low=df.Low))
     fig.update_xaxes(
         rangebreaks=[dict(bounds=['sat', 'mon'])]
@@ -39,8 +26,25 @@ def candlestick_graph():
     return fig
 
 
-def price_target_graph():
-    # fig = go.Figure()
+def price_target_graph(df, info):
+    pt_date = dt.datetime.today() + dt.timedelta(25)
+
+    target_high = info['targetHighPrice']
+    target_mean = info['targetMeanPrice']
+    target_meadian = info['targetMedianPrice']
+    target_low = info['targetLowPrice']
+
+    pt_dates = [df.index[-1]] + [pt_date]
+    pt_high = [df.Close[-1]] + [target_high]
+    pt_mean = [df.Close[-1]] + [target_mean]
+    pt_low = [df.Close[-1]] + [target_low]
+
+    year_high = [df.Close.max()] * 2
+    year_high_dates = [df.index[0]] + [df.Close.idxmax()]
+
+    year_low = [df.Close.min()] * 2
+    year_low_dates = [df.index[0]] + [df.Close.idxmin()]
+
     fig = make_subplots(specs=[[{'secondary_y': True}]])
 
     hovertemplate = """
@@ -82,50 +86,50 @@ def price_target_graph():
     return fig
 
 
-app = Dash(__name__)
-
 app.layout = html.Div([
     dbc.Row([
         html.Div('Please Enter Ticker: '),
-        dcc.Input(id='ticker-input'),
-        html.Button(id='submit-ticker-button', children='Submit')
+        dcc.Input(id='input', value='', type='text'),
+        html.Button(id='button', children='Submit')
     ]),
     dbc.Row([
-        dcc.Graph('candles')
+        dcc.Graph(id='candles', config=candles_config)
+        # html.H1(id='ticker')
     ]),
     dbc.Row([
-        dcc.Checklist(id='ta', options=['50 Day Simple Moving Average', '9 Day Simple Moving Average'], inline=True)
-    ]),
+        dbc.Col([
+            html.Div('Col 1')
+        ]),
+        dbc.Col([
+            dash_table.DataTable(holders.to_dict('records'), [{'name': i, 'id': i} for i in holders.columns]),
+        ]),
+        dbc.Col([
+            dcc.Graph(id='pt', config={'displayModeBar': False})
+        ])
+    ], style={'display': 'flex', 'justify': 'center', 'align': 'center'}),
 ])
 
 
 @app.callback(
+    # Output('ticker', 'children'),
     Output('candles', 'figure'),
-    Input('ta', 'value')
+    Output('pt', 'figure'),
+    Input('button', 'n_clicks'),
+    State('input', 'value')
 )
-def update_chart(value):
-    data = {'200 Day Simple Moving Average': 200,
-            '50 Day Simple Moving Average': 50,
-            '9 Day Simple Moving Average': 9,
-            'Bollinger Bands': 'asd'}
-    if value:
-        fig = candlestick_graph()
-        if len(value) == 1:
-            window = data[value[0]]
-            ma_values = df.Close.rolling(window).mean()
-            fig.add_trace(go.Scatter(x=df.index, y=ma_values, name=value[0], line=dict(color='royalblue')))
-        else:
-            for tool in value:
-                window = data[tool]
-                ma_values = df.Close.rolling(window).mean()
-                fig.add_trace(go.Scatter(x=df.index, y=ma_values, name=tool, line=dict(color='#00D')))
+def set_ticker(n_clicks, input_value):
+    if n_clicks:
+        if input_value not in ticker_database:
+            ticker = yf.Ticker(input_value)
+            ticker_data = ticker.history(period='1y', interval='1d')
+            ticker_info = ticker.info
+            ticker_database[input_value] = [ticker_data, ticker_info]
+        return candlestick_graph(ticker_database[input_value][0]), price_target_graph(ticker_database[input_value][0],
+                                                                                      ticker_database[input_value][1])
     else:
-        fig = go.Figure()
-    return fig
+        return go.Figure(), go.Figure()
+        # return f'Ticker: {ticker_database[input_value]}'
 
 
 if __name__ == '__main__':
     app.run_server(debug=True)
-
-
-import trendln

@@ -17,3 +17,6 @@ stream.subscribe_quotes(quote_callback, 'AAPL')
 # stream.subscribe_trades(trade_callback, 'ETHUSD')
 
 stream.run()
+
+
+from yfinance import Ticker
