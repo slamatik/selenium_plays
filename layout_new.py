@@ -92,6 +92,12 @@ def price_target_graph(df=None, info=None):
 
 app.layout = dbc.Container([
     dbc.Row([
+        dbc.Col([
+            dcc.RadioItems([' 1D', ' 5D', ' 1M', '6M', 'YTD', '1Y', '5Y', 'Max'], '1D',
+                           inputStyle={'margin-left': '20px'}, style={'display': 'inline-block'}),
+        ]),
+    ], style={'justify-content': 'center'}),
+    dbc.Row([
         dbc.Col(id='left-columns', width=1, children=[
             dbc.Input(id='input', value='', type='text'),
             html.Button(id='button', children='Submit'),
@@ -102,7 +108,6 @@ app.layout = dbc.Container([
             ])
         ]),
         dbc.Col(id='main-column', children=[
-            dcc.RadioItems([' 1D', ' 5D', ' 1M', '6M', 'YTD', '1Y', '5Y', 'Max'], '1D', inputStyle={'margin-left': '20px'}),
             dcc.Graph(id='main-graph')
         ]),
         dbc.Col(id='right-column', width=3, children=[dcc.Graph(id='secondary-graph')])
